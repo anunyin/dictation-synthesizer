@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Speech.Synthesis;
 using System.Collections.Generic;
+using Microsoft.Win32;
 
 namespace DictationSynthesizer
 {
@@ -79,9 +80,16 @@ namespace DictationSynthesizer
 
             saveButton.Click += (sender, args) =>
             {
-                saving = true;
-                synth.SetOutputToWaveFile("C:\\Users\\magda\\Desktop\\output.wav");
-                synth.SpeakAsync(BuildDictationPrompt());
+                var dialog = new SaveFileDialog();
+                dialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                dialog.FileName = "dictation.wav";
+
+                if (dialog.ShowDialog() == true)
+                {
+                    saving = true;
+                    synth.SetOutputToWaveFile(dialog.FileName);
+                    synth.SpeakAsync(BuildDictationPrompt());
+                }
             };
             //synth.SelectVoice("Microsoft Zira Desktop");
 
