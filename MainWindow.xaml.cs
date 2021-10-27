@@ -3,6 +3,9 @@ using System.Windows;
 using System.Speech.Synthesis;
 using System.Collections.Generic;
 using Microsoft.Win32;
+using NAudio.Wave;
+using NAudio.Lame;
+using System.IO;
 
 namespace DictationSynthesizer
 {
@@ -66,6 +69,7 @@ namespace DictationSynthesizer
             // init transcriptTextBox
             transcriptTextBox.TextWrapping = TextWrapping.Wrap;
 
+            // buttons
             speakButton.Click += (sender, args) =>
             {
                 if (speaking)
@@ -82,87 +86,73 @@ namespace DictationSynthesizer
             {
                 var dialog = new SaveFileDialog();
                 dialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                dialog.FileName = "dictation.wav";
+                dialog.FileName = "dictation";
 
                 if (dialog.ShowDialog() == true)
                 {
                     saving = true;
-                    synth.SetOutputToWaveFile(dialog.FileName);
-                    synth.SpeakAsync(BuildDictationPrompt());
+
+                    var stream = new MemoryStream();
+                    synth.SetOutputToWaveStream(stream);
+                    synth.Speak(BuildDictationPrompt());
+                    stream.Seek(0, SeekOrigin.Begin);
+
+                    using (var reader = new WaveFileReader(stream))
+                    using (var writer = new LameMP3FileWriter(dialog.FileName, reader.WaveFormat, LAMEPreset.VBR_90))
+                        reader.CopyTo(writer);
                 }
             };
-            //synth.SelectVoice("Microsoft Zira Desktop");
-
-            //var pause = TimeSpan.FromSeconds(1);
-            //var builder = new PromptBuilder();
-            //var slowRateStyle = new PromptStyle() { Rate = PromptRate.ExtraSlow };
-
-            //builder.StartSentence();
-            //builder.StartStyle(slowRateStyle);
-            //builder.AppendText("The");
-            //builder.EndStyle();
-            //builder.AppendText("cat");
-            //builder.AppendBreak(pause);
-            //builder.AppendText("killed");
-            //builder.AppendBreak(pause);
-            //builder.StartStyle(slowRateStyle);
-            //builder.AppendText("The");
-            //builder.EndStyle();
-            //builder.AppendText("mouse.");
-            //builder.EndSentence();
-
-            //builder.AppendBreak(TimeSpan.FromSeconds(1.5));
-
-            //builder.StartSentence();
-            //builder.AppendText("I");
-            //builder.AppendBreak(pause);
-            //builder.AppendText("will be");
-            //builder.AppendBreak(pause);
-            //builder.AppendText("fighting");
-            //builder.AppendBreak(pause);
-            //builder.AppendText("you.");
-            //builder.EndSentence();
-
-            //synth.SpeakAsync(builder);
         }
 
-        private Dictionary<string, string> AliasWords = new Dictionary<string, string>
+        //private Dictionary<string, string> AliasWords = new Dictionary<string, string>
+        //{
+        //    { "an", "anne" },
+        //    { "and", "anned" },
+        //    { "the", "thee" },
+        //};
+
+        private Dictionary<string, string> PronunciationWords = new Dictionary<string, string>
         {
-            { "an", "anne" },
-            { "and", "anned" },
+            { "i", "aɪ" },
+            { "a", "eɪ" },
+            { "an", "æn" },
+            { "and", "ænd" },
+            { "the", "ði" },
         };
 
-        private List<string> ExtraSlowWords = new List<string>
-        {
-            "i", "a", "on", "in"
-        };
+        //private List<string> ExtraSlowWords = new List<string>
+        //{
+        //    "i", "on", "in", "a", "an", "and",
+        //};
 
         private PromptBuilder BuildDictationPrompt()
         {
             var builder = new PromptBuilder();
 
-            var slowStyle = new PromptStyle() { Rate = PromptRate.Slow };
-            var extraSlowStyle = new PromptStyle() { Rate = PromptRate.ExtraSlow };
+            //var slowStyle = new PromptStyle() { Rate = PromptRate.Slow };
+            //var extraSlowStyle = new PromptStyle() { Rate = PromptRate.ExtraSlow };
 
-            var pauseInSeconds = 60.0 / int.Parse(wpmTextBox.Text);
-            var pause = TimeSpan.FromSeconds(pauseInSeconds);
+            var pauseInSeconds = 1.0 / int.Parse(wpmTextBox.Text);
+            var pause = TimeSpan.FromMinutes(pauseInSeconds);
 
             var words = transcriptTextBox.Text.Split(' ');
             foreach (var word in words)
             {
                 var wordLowercase = word.ToLower();
 
-                if (ExtraSlowWords.Contains(wordLowercase))
-                    builder.StartStyle(extraSlowStyle);
-                else
-                    builder.StartStyle(slowStyle);
+                //if (ExtraSlowWords.Contains(wordLowercase))
+                //    builder.StartStyle(extraSlowStyle);
+                //else
+                //    builder.StartStyle(slowStyle);
 
-                if (AliasWords.ContainsKey(wordLowercase))
-                    builder.AppendTextWithAlias(word, AliasWords[wordLowercase]);
+                //if (AliasWords.ContainsKey(wordLowercase))
+                //    builder.AppendTextWithAlias(word, AliasWords[wordLowercase]);
+                if (PronunciationWords.ContainsKey(wordLowercase))
+                    builder.AppendTextWithPronunciation(word, PronunciationWords[wordLowercase]);
                 else
                     builder.AppendText(word);
-
-                builder.EndStyle();
+                
+                //builder.EndStyle();
 
                 if (word == string.Empty)
                 { 
