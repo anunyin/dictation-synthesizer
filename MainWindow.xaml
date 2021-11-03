@@ -18,7 +18,10 @@
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="1*"/>
             </Grid.ColumnDefinitions>
-            <ComboBox Grid.Column="0" x:Name="voiceComboBox"/>
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <Label Content="Voice: " HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                <ComboBox x:Name="voiceComboBox"/>
+            </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
                 <TextBox Width="25" TextAlignment="Right" VerticalContentAlignment="Center" x:Name="wpmTextBox"/>
                 <Label Content="WPM" VerticalContentAlignment="Center"/>

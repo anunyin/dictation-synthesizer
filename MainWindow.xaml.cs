@@ -11,45 +11,21 @@ namespace DictationSynthesizer
 {
     public partial class MainWindow : Window
     {
+        private bool speaking = false;
+        private bool saving = false;
+
         public MainWindow()
         {
             InitializeComponent();
 
-            bool speaking = false;
-            bool saving = false;
-
             var synth = new SpeechSynthesizer();
             synth.SpeakStarted += (x, x2) =>
             {
-                voiceComboBox.IsEnabled = false;
-
-                if (speaking)
-                {
-                    speakButton.Content = "Stop speaking";
-                    saveButton.IsEnabled = false;
-                }
-                if (saving)
-                {
-                    saveButton.Content = "Saving...";
-                    speakButton.IsEnabled = false;
-                }
+                SpeakStarted();
             };
             synth.SpeakCompleted += (x, x2) =>
             {
-                voiceComboBox.IsEnabled = true;
-
-                if (speaking)
-                {
-                    speaking = false;
-                    speakButton.Content = "Speak";
-                    saveButton.IsEnabled = true;
-                }
-                if (saving)
-                {
-                    saving = false;
-                    saveButton.Content = "Save";
-                    speakButton.IsEnabled = true;
-                }
+                SpeakCompleted();
             };
 
             // init voiceComboBox
@@ -62,6 +38,8 @@ namespace DictationSynthesizer
                 synth.SelectVoice(voiceComboBox.SelectedItem as string);
             };
             voiceComboBox.SelectedIndex = 0;
+            voiceComboBox.HorizontalContentAlignment = HorizontalAlignment.Center;
+            voiceComboBox.VerticalContentAlignment = VerticalAlignment.Center;
 
             // init wpmTextBox
             wpmTextBox.Text = "40";
@@ -86,6 +64,9 @@ namespace DictationSynthesizer
             {
                 var dialog = new SaveFileDialog();
                 dialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                dialog.DefaultExt = "mp3";
+                dialog.Filter =
+                    "MP3 files (*.mp3)|*.mp3|All files (*.*)|*.*";
                 dialog.FileName = "dictation";
 
                 if (dialog.ShowDialog() == true)
@@ -100,6 +81,8 @@ namespace DictationSynthesizer
                     using (var reader = new WaveFileReader(stream))
                     using (var writer = new LameMP3FileWriter(dialog.FileName, reader.WaveFormat, LAMEPreset.VBR_90))
                         reader.CopyTo(writer);
+
+                    SpeakCompleted();
                 }
             };
         }
@@ -124,6 +107,40 @@ namespace DictationSynthesizer
         //{
         //    "i", "on", "in", "a", "an", "and",
         //};
+
+        void SpeakStarted()
+        {
+            voiceComboBox.IsEnabled = false;
+
+            if (speaking)
+            {
+                speakButton.Content = "Stop speaking";
+                saveButton.IsEnabled = false;
+            }
+            if (saving)
+            {
+                saveButton.Content = "Saving...";
+                speakButton.IsEnabled = false;
+            }
+        }
+
+        void SpeakCompleted()
+        {
+            voiceComboBox.IsEnabled = true;
+
+            if (speaking)
+            {
+                speaking = false;
+                speakButton.Content = "Speak";
+                saveButton.IsEnabled = true;
+            }
+            if (saving)
+            {
+                saving = false;
+                saveButton.Content = "Save";
+                speakButton.IsEnabled = true;
+            }
+        }
 
         private PromptBuilder BuildDictationPrompt()
         {
