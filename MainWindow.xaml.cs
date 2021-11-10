@@ -6,6 +6,8 @@ using Microsoft.Win32;
 using NAudio.Wave;
 using NAudio.Lame;
 using System.IO;
+using System.Text;
+using System.Linq;
 
 namespace DictationSynthesizer
 {
@@ -57,6 +59,23 @@ namespace DictationSynthesizer
                     speaking = true;
                     synth.SetOutputToDefaultAudioDevice();
                     synth.SpeakAsync(BuildDictationPrompt());
+                    //var pauseInMinutes = 1.0 / int.Parse(wpmTextBox.Text);
+                    //var words = transcriptTextBox.Text.Split(' ');
+                    //var lastSpokenTime = DateTime.Now;
+                    //var lastSpokenWordIndex = 0;
+                    //while (speaking)
+                    //{
+                    //    var now = DateTime.Now;
+                    //    if ((now - lastSpokenTime).TotalMinutes >= pauseInMinutes)
+                    //    {
+                    //        synth.SpeakAsync(words[lastSpokenWordIndex]);
+                    //        lastSpokenWordIndex++;
+                    //        lastSpokenTime = now;
+
+                    //        if (words.Length < lastSpokenWordIndex + 1)
+                    //            speaking = false;
+                    //    }
+                    //}
                 }
             };
 
@@ -85,14 +104,13 @@ namespace DictationSynthesizer
                     SpeakCompleted();
                 }
             };
-        }
 
-        //private Dictionary<string, string> AliasWords = new Dictionary<string, string>
-        //{
-        //    { "an", "anne" },
-        //    { "and", "anned" },
-        //    { "the", "thee" },
-        //};
+            randomizeWordsButton.Click += (sender, args) =>
+            {
+                var words = Tokenize(transcriptTextBox.Text);
+                transcriptTextBox.Text = string.Join(" ", words.Shuffle().ToArray());
+            };
+        }
 
         private Dictionary<string, string> PronunciationWords = new Dictionary<string, string>
         {
@@ -142,6 +160,37 @@ namespace DictationSynthesizer
             }
         }
 
+        private List<string> Tokenize(string dictationText)
+        {
+            var reader = new StringReader(dictationText);
+            var words = new List<string>();
+            while (reader.Peek() != -1)
+            {
+                var c = reader.Peek();
+                if (char.IsWhiteSpace((char)c))
+                {
+                    reader.Read();
+                }
+                else
+                {
+                    words.Add(ParseWord(reader));
+                }
+            }
+            return words;
+        }
+
+        private string ParseWord(StringReader reader)
+        {
+            var w = string.Empty;
+            while (
+                reader.Peek() != -1 
+                && !char.IsWhiteSpace((char)reader.Peek()))
+            {
+                w += (char)reader.Read();
+            }
+            return w;
+        }
+
         private PromptBuilder BuildDictationPrompt()
         {
             var builder = new PromptBuilder();
@@ -149,10 +198,10 @@ namespace DictationSynthesizer
             //var slowStyle = new PromptStyle() { Rate = PromptRate.Slow };
             //var extraSlowStyle = new PromptStyle() { Rate = PromptRate.ExtraSlow };
 
-            var pauseInSeconds = 1.0 / int.Parse(wpmTextBox.Text);
-            var pause = TimeSpan.FromMinutes(pauseInSeconds);
+            var pauseInMinutes = 1.0 / int.Parse(wpmTextBox.Text);
+            var pause = TimeSpan.FromMinutes(pauseInMinutes);
 
-            var words = transcriptTextBox.Text.Split(' ');
+            var words = Tokenize(transcriptTextBox.Text); //transcriptTextBox.Text.Split(' ');
             foreach (var word in words)
             {
                 var wordLowercase = word.ToLower();
@@ -162,13 +211,11 @@ namespace DictationSynthesizer
                 //else
                 //    builder.StartStyle(slowStyle);
 
-                //if (AliasWords.ContainsKey(wordLowercase))
-                //    builder.AppendTextWithAlias(word, AliasWords[wordLowercase]);
                 if (PronunciationWords.ContainsKey(wordLowercase))
                     builder.AppendTextWithPronunciation(word, PronunciationWords[wordLowercase]);
                 else
                     builder.AppendText(word);
-                
+
                 //builder.EndStyle();
 
                 if (word == string.Empty)
